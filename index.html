@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tích Tiểu Thành Đại - Theo Dõi Mục Tiêu Tiền & Tích Luỹ Hàng Ngày</title>
+  <meta name="description" content="Ứng dụng quản lý quỹ mục tiêu tài chính thông minh, ghi nhận số tiền tích lũy mỗi ngày, tự động tính phần trăm tiến độ và dự báo ngày hoàn thành.">
+  <meta name="keywords" content="tích lũy tiền, mục tiêu tài chính, tiết kiệm mỗi ngày, heo đất điện tử, quản lý quỹ">
+  <meta property="og:title" content="Tích Tiểu Thành Đại - Quản Lý Quỹ Mục Tiêu">
+  <meta property="og:description" content="Theo dõi số tiền tích lũy mỗi ngày, xem phần trăm hoàn thành mục tiêu trực quan và sinh động.">
+  <meta property="og:type" content="website">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="theme-dark">
+  <div class="app-background">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="main-header">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-piggy-bank"></i>
+        </div>
+        <div class="brand-text">
+          <h1>TÍCH TIỂU THÀNH ĐẠI</h1>
+          <p class="subtitle">Đánh dấu tích luỹ mỗi ngày &bull; Chinh phục mọi mục tiêu</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Sound toggle -->
+        <button id="btn-toggle-sound" class="icon-btn" title="Bật/Tắt âm thanh hiệu ứng" aria-label="Bật hoặc tắt âm thanh">
+          <i class="fa-solid fa-volume-high"></i>
+        </button>
+        <!-- Theme toggle -->
+        <button id="btn-toggle-theme" class="icon-btn" title="Chuyển chế độ Sáng/Tối" aria-label="Chuyển đổi giao diện">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+        <!-- New Fund Button -->
+        <button id="btn-open-create-fund" class="btn btn-primary">
+          <i class="fa-solid fa-plus"></i>
+          <span>Tạo Quỹ Mới</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Fund Switcher Bar -->
+    <section class="funds-nav-section" aria-label="Danh sách các quỹ mục tiêu">
+      <div class="section-title-wrap">
+        <h2><i class="fa-solid fa-folder-open"></i> Danh Sách Quỹ Của Bạn</h2>
+        <span class="funds-count-badge" id="funds-count">0 quỹ</span>
+      </div>
+      <div class="funds-scroll-container" id="funds-nav-list">
+        <!-- Dynamic list of fund pill tabs will be rendered here -->
+      </div>
+    </section>
+
+    <!-- Main Active Fund Dashboard -->
+    <main id="active-fund-dashboard" class="fund-dashboard">
+      <!-- Top Overview Banner -->
+      <section class="overview-card" id="overview-card">
+        <div class="overview-header">
+          <div class="fund-identity">
+            <span class="fund-icon-badge" id="card-fund-icon">🎯</span>
+            <div class="fund-titles">
+              <div class="fund-tag" id="card-fund-category">Mục Tiêu Cá Nhân</div>
+              <h2 id="card-fund-name">Đang tải quỹ...</h2>
+              <p id="card-fund-desc" class="fund-desc">Chưa có mô tả</p>
+            </div>
+          </div>
+          <div class="fund-options-dropdown">
+            <button class="icon-btn sm" id="btn-fund-menu" title="Tùy chọn quỹ">
+              <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+            <div class="dropdown-menu" id="fund-dropdown-menu">
+              <button id="btn-edit-current-fund"><i class="fa-solid fa-pen-to-square"></i> Sửa quỹ này</button>
+              <button id="btn-export-current-fund"><i class="fa-solid fa-file-export"></i> Xuất dữ liệu</button>
+              <button id="btn-delete-current-fund" class="danger-item"><i class="fa-solid fa-trash-can"></i> Xóa quỹ này</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Big Progress Highlight Section -->
+        <div class="progress-hero-grid">
+          <!-- Circular & Percentage visual -->
+          <div class="progress-visual-box">
+            <div class="circular-progress-wrap">
+              <svg class="progress-ring" width="200" height="200" viewBox="0 0 200 200">
+                <circle class="progress-ring-bg" stroke="currentColor" stroke-width="16" fill="transparent" r="82" cx="100" cy="100"/>
+                <circle id="progress-circle" class="progress-ring-bar" stroke="currentColor" stroke-width="16" stroke-linecap="round" fill="transparent" r="82" cx="100" cy="100"/>
+              </svg>
+              <div class="progress-inner-content">
+                <span class="percent-label" id="progress-percentage">0.0%</span>
+                <span class="status-sublabel" id="progress-status-badge">Bắt đầu</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Key Financial Figures -->
+          <div class="financial-metrics">
+            <div class="metric-card current-balance">
+              <div class="metric-icon"><i class="fa-solid fa-vault"></i></div>
+              <div class="metric-info">
+                <span class="metric-title">Số Tiền Đã Tích Luỹ</span>
+                <span class="metric-value highlight" id="metric-current-money">0 ₫</span>
+                <span class="metric-sub" id="metric-entries-count">0 lần đóng góp</span>
+              </div>
+            </div>
+
+            <div class="metric-card target-goal">
+              <div class="metric-icon"><i class="fa-solid fa-bullseye"></i></div>
+              <div class="metric-info">
+                <span class="metric-title">Mục Tiêu Đặt Ra</span>
+                <span class="metric-value" id="metric-target-money">0 ₫</span>
+                <span class="metric-sub" id="metric-target-date">Chưa đặt hạn chót</span>
+              </div>
+            </div>
+
+            <div class="metric-card remaining-money">
+              <div class="metric-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+              <div class="metric-info">
+                <span class="metric-title">Còn Thiếu Cần Kiếm</span>
+                <span class="metric-value" id="metric-remaining-money">0 ₫</span>
+                <span class="metric-sub" id="metric-pace-estimate">Cần duy trì đều đặn</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Linear Progress Bar -->
+        <div class="linear-progress-wrapper">
+          <div class="linear-bar-labels">
+            <span>0 ₫ (Bắt đầu)</span>
+            <span id="progress-milestone-hint">Đã đi được 0% chặng đường</span>
+            <span id="target-summary-label">Mục tiêu: 0 ₫</span>
+          </div>
+          <div class="linear-progress-track">
+            <div class="linear-progress-fill" id="linear-progress-bar" style="width: 0%;"></div>
+            <div class="progress-glow-point" id="progress-glow-point" style="left: 0%;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Action Panel & History Section Grid -->
+      <div class="dashboard-split-grid">
+        <!-- Left: Quick Add Daily Earnings Form -->
+        <section class="daily-deposit-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-hand-holding-dollar"></i> Đánh Dấu Tiền Hôm Nay</h3>
+            <span class="card-subtitle">Mỗi ngày tích một ít, thành công đến bất ngờ</span>
+          </div>
+
+          <form id="form-add-deposit" class="deposit-form">
+            <!-- Amount Input -->
+            <div class="form-group">
+              <label for="deposit-amount">
+                <span>Số tiền kiếm được hôm nay</span>
+                <span class="required-star">*</span>
+              </label>
+              <div class="input-with-currency">
+                <input 
+                  type="text" 
+                  id="deposit-amount" 
+                  name="deposit-amount" 
+                  inputmode="numeric" 
+                  placeholder="Ví dụ: 100,000" 
+                  autocomplete="off" 
+                  required
+                >
+                <span class="currency-tag">VNĐ</span>
+              </div>
+              <!-- Quick Select Buttons -->
+              <div class="quick-amounts-bar">
+                <button type="button" class="chip-btn" data-val="20000">+20K</button>
+                <button type="button" class="chip-btn" data-val="50000">+50K</button>
+                <button type="button" class="chip-btn" data-val="100000">+100K</button>
+                <button type="button" class="chip-btn" data-val="200000">+200K</button>
+                <button type="button" class="chip-btn" data-val="500000">+500K</button>
+                <button type="button" class="chip-btn" data-val="1000000">+1TR</button>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <!-- Date Picker -->
+              <div class="form-group">
+                <label for="deposit-date">
+                  <i class="fa-regular fa-calendar"></i> Ngày ghi nhận
+                </label>
+                <input type="date" id="deposit-date" name="deposit-date" required>
+              </div>
+
+              <!-- Entry Type -->
+              <div class="form-group">
+                <label for="deposit-type">
+                  <i class="fa-solid fa-arrow-right-arrow-left"></i> Phân loại
+                </label>
+                <select id="deposit-type" name="deposit-type">
+                  <option value="income" selected>+ Nạp vào quỹ (Thu nhập/Tiết kiệm)</option>
+                  <option value="withdraw">- Rút bớt (Chi tiêu phát sinh)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Note / Source of Money -->
+            <div class="form-group">
+              <label for="deposit-note">
+                <i class="fa-regular fa-note-sticky"></i> Nguồn tiền / Ghi chú (tùy chọn)
+              </label>
+              <input 
+                type="text" 
+                id="deposit-note" 
+                name="deposit-note" 
+                placeholder="Ví dụ: Tiền lương, bán đồ cũ, tiền tip, tiền nhịn cafe..."
+                maxlength="100"
+              >
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="btn-submit-deposit" class="btn btn-primary btn-large btn-glow">
+              <i class="fa-solid fa-plus-circle"></i>
+              <span>Cộng Vào Quỹ &amp; Cập Nhật %</span>
+            </button>
+          </form>
+
+          <!-- Daily streak / habit motivation card -->
+          <div class="streak-mini-card" id="streak-box">
+            <div class="streak-icon">🔥</div>
+            <div class="streak-content">
+              <div class="streak-title" id="streak-title">Chuỗi tích lũy: 0 ngày liên tiếp</div>
+              <p class="streak-desc" id="streak-desc">Hãy nạp đều đặn mỗi ngày để duy trì thói quen tài chính tốt nhé!</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right: Daily Entries Log & History -->
+        <section class="entries-history-card">
+          <div class="history-card-header">
+            <div class="header-titles">
+              <h3><i class="fa-solid fa-clock-rotate-left"></i> Lịch Sử Đóng Góp</h3>
+              <span class="card-subtitle" id="history-summary-text">0 lượt đánh dấu</span>
+            </div>
+            
+            <div class="history-controls">
+              <!-- Search/filter -->
+              <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="filter-history-input" placeholder="Tìm theo ghi chú..." aria-label="Tìm kiếm lịch sử">
+              </div>
+            </div>
+          </div>
+
+          <!-- Entries List Container -->
+          <div class="entries-list" id="entries-list-container">
+            <!-- Dynamic entries will be inserted here -->
+          </div>
+        </section>
+      </div>
+
+      <!-- Quick Analysis / Milestones Section -->
+      <section class="analytics-card">
+        <div class="card-header">
+          <h3><i class="fa-solid fa-chart-line"></i> Phân Tích &amp; Mốc Chinh Phục</h3>
+          <span class="card-subtitle">Theo dõi tốc độ và các cột mốc quan trọng</span>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="stat-box">
+            <span class="stat-label">Trung bình mỗi ngày nạp</span>
+            <span class="stat-value" id="stat-avg-daily">0 ₫</span>
+            <span class="stat-sub">Dựa trên các ngày có đóng góp</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Số ngày cần tiếp tục</span>
+            <span class="stat-value" id="stat-days-needed">-- ngày</span>
+            <span class="stat-sub">Dự kiến theo tốc độ hiện tại</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Khoản nạp lớn nhất</span>
+            <span class="stat-value" id="stat-max-entry">0 ₫</span>
+            <span class="stat-sub">Kỷ lục trong 1 ngày</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Dự kiến hoàn thành</span>
+            <span class="stat-value" id="stat-eta-date">--/--/----</span>
+            <span class="stat-sub">Cột mốc về đích 100%</span>
+          </div>
+        </div>
+
+        <!-- Milestones Step Bar -->
+        <div class="milestones-track-wrapper">
+          <div class="milestones-title">Cột mốc chặng đường:</div>
+          <div class="milestones-steps" id="milestones-steps-container">
+            <div class="milestone-node" data-percent="25">
+              <div class="node-circle"><i class="fa-solid fa-seedling"></i></div>
+              <span class="node-pct">25%</span>
+              <span class="node-name">Khởi động</span>
+            </div>
+            <div class="milestone-line"></div>
+            <div class="milestone-node" data-percent="50">
+              <div class="node-circle"><i class="fa-solid fa-bicycle"></i></div>
+              <span class="node-pct">50%</span>
+              <span class="node-name">Nửa chặng</span>
+            </div>
+            <div class="milestone-line"></div>
+            <div class="milestone-node" data-percent="75">
+              <div class="node-circle"><i class="fa-solid fa-car-side"></i></div>
+              <span class="node-pct">75%</span>
+              <span class="node-name">Tăng tốc</span>
+            </div>
+            <div class="milestone-line"></div>
+            <div class="milestone-node" data-percent="100">
+              <div class="node-circle"><i class="fa-solid fa-trophy"></i></div>
+              <span class="node-pct">100%</span>
+              <span class="node-name">Về đích!</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Empty State (When no funds exist) -->
+    <div id="no-fund-placeholder" class="empty-funds-screen hidden">
+      <div class="empty-icon-box">
+        <i class="fa-solid fa-piggy-bank"></i>
+      </div>
+      <h2>Bạn Chưa Có Quỹ Mục Tiêu Nào</h2>
+      <p>Hãy tạo quỹ đầu tiên để bắt đầu đặt mục tiêu tiền và đánh dấu số tiền kiếm được mỗi ngày nhé!</p>
+      <div class="preset-templates-row">
+        <span>Gợi ý mẫu:</span>
+        <button class="preset-btn" data-name="Quỹ Mua iPhone 16 Pro" data-target="32000000" data-icon="📱" data-cat="Đồ Công Nghệ">📱 Mua iPhone</button>
+        <button class="preset-btn" data-name="Quỹ Khẩn Cấp 3 Tháng" data-target="25000000" data-icon="🛡️" data-cat="Tiết Kiệm An Toàn">🛡️ Quỹ Khẩn Cấp</button>
+        <button class="preset-btn" data-name="Quỹ Du Lịch Đà Lạt" data-target="8000000" data-icon="✈️" data-cat="Du Lịch & Giải Trí">✈️ Đi Du Lịch</button>
+        <button class="preset-btn" data-name="Quỹ Tự Do Tài Chính" data-target="100000000" data-icon="💰" data-cat="Tự Do Tài Chính">💰 100 Triệu Đầu Tiên</button>
+      </div>
+      <button id="btn-create-first-fund" class="btn btn-primary btn-large btn-glow">
+        <i class="fa-solid fa-plus-circle"></i> Tạo Quỹ Mục Tiêu Ngay
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-info">
+        <span>© 2026 Tích Tiểu Thành Đại &bull; Ứng dụng theo dõi mục tiêu tiền mỗi ngày</span>
+      </div>
+      <div class="footer-actions">
+        <button id="btn-backup-data" class="link-btn"><i class="fa-solid fa-download"></i> Sao lưu JSON</button>
+        <button id="btn-restore-data" class="link-btn"><i class="fa-solid fa-upload"></i> Khôi phục</button>
+        <input type="file" id="file-restore-input" accept=".json" style="display: none;">
+        <button id="btn-load-sample-data" class="link-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Nạp dữ liệu mẫu</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- MODAL: CREATE / EDIT FUND -->
+  <div class="modal-backdrop" id="modal-fund" aria-hidden="true">
+    <div class="modal-window" role="dialog" aria-labelledby="modal-fund-title">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-bullseye-arrow"></i>
+          <h3 id="modal-fund-title">Tạo Quỹ Mục Tiêu Mới</h3>
+        </div>
+        <button class="icon-btn sm modal-close" id="btn-close-fund-modal" aria-label="Đóng">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="form-fund" class="modal-form">
+        <input type="hidden" id="fund-edit-id" value="">
+
+        <!-- Fund Name -->
+        <div class="form-group">
+          <label for="fund-name-input">
+            Tên quỹ mục tiêu <span class="required-star">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="fund-name-input" 
+            placeholder="Ví dụ: Quỹ mua Macbook, Quỹ tiết kiệm 50 triệu..." 
+            required 
+            maxlength="50"
+          >
+        </div>
+
+        <!-- Target Amount -->
+        <div class="form-group">
+          <label for="fund-target-input">
+            Số tiền mục tiêu (VNĐ) <span class="required-star">*</span>
+          </label>
+          <div class="input-with-currency">
+            <input 
+              type="text" 
+              id="fund-target-input" 
+              inputmode="numeric" 
+              placeholder="Ví dụ: 30,000,000" 
+              required
+            >
+            <span class="currency-tag">VNĐ</span>
+          </div>
+          <div class="quick-target-bar">
+            <button type="button" class="chip-btn sm" data-target-preset="5000000">5 Triệu</button>
+            <button type="button" class="chip-btn sm" data-target-preset="10000000">10 Triệu</button>
+            <button type="button" class="chip-btn sm" data-target-preset="20000000">20 Triệu</button>
+            <button type="button" class="chip-btn sm" data-target-preset="50000000">50 Triệu</button>
+            <button type="button" class="chip-btn sm" data-target-preset="100000000">100 Triệu</button>
+          </div>
+        </div>
+
+        <!-- Initial Starting Balance (Optional) -->
+        <div class="form-group" id="initial-balance-group">
+          <label for="fund-initial-balance">
+            Số tiền đã có sẵn từ trước (nếu có)
+          </label>
+          <div class="input-with-currency">
+            <input 
+              type="text" 
+              id="fund-initial-balance" 
+              inputmode="numeric" 
+              placeholder="0" 
+              value="0"
+            >
+            <span class="currency-tag">VNĐ</span>
+          </div>
+        </div>
+
+        <!-- Category & Icon & Deadline -->
+        <div class="form-row-3">
+          <div class="form-group">
+            <label for="fund-category-select">Danh mục</label>
+            <select id="fund-category-select">
+              <option value="Mua Sắm">🛍️ Mua Sắm</option>
+              <option value="Đồ Công Nghệ">💻 Công Nghệ</option>
+              <option value="Du Lịch">✈️ Du Lịch</option>
+              <option value="Quỹ Khẩn Cấp">🛡️ Khẩn Cấp</option>
+              <option value="Học Tập">📚 Học Tập</option>
+              <option value="Xe Cộ">🛵 Xe Cộ</option>
+              <option value="Đầu Tư / Tự Do">💰 Tự Do Tài Chính</option>
+              <option value="Khác">✨ Khác</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="fund-icon-select">Biểu tượng</label>
+            <select id="fund-icon-select">
+              <option value="🎯">🎯 Mục tiêu</option>
+              <option value="📱">📱 Điện thoại</option>
+              <option value="💻">💻 Máy tính</option>
+              <option value="🛵">🛵 Xe máy</option>
+              <option value="🚗">🚗 Ô tô</option>
+              <option value="✈️">✈️ Máy bay</option>
+              <option value="🏠">🏠 Nhà cửa</option>
+              <option value="🎓">🎓 Khóa học</option>
+              <option value="💍">💍 Đám cưới</option>
+              <option value="💎">💎 Tiết kiệm</option>
+              <option value="🥇">🥇 Thành tựu</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="fund-deadline-input">Hạn chót (Tùy chọn)</label>
+            <input type="date" id="fund-deadline-input">
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+          <label for="fund-desc-input">Lời nhắn nhủ / Động lực phấn đấu</label>
+          <textarea 
+            id="fund-desc-input" 
+            rows="2" 
+            placeholder="Ví dụ: Ráng cày thêm mỗi tối để đổi máy trước tháng 12!"
+            maxlength="150"
+          ></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-fund">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-fund">
+            <i class="fa-solid fa-check"></i> Lưu Quỹ
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="js/app.js"></script>
+</body>
+</html>
