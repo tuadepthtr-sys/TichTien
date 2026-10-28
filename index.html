@@ -45,6 +45,12 @@
       </div>
 
       <div class="header-actions">
+        <!-- Cloud Sync button -->
+        <button id="btn-open-cloud-sync" class="btn btn-sync" title="Đồng bộ dữ liệu đa thiết bị (PC & Điện thoại)">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <span class="sync-status-dot offline" id="sync-status-dot"></span>
+          <span id="sync-btn-label">Đồng Bộ Cloud</span>
+        </button>
         <!-- Sound toggle -->
         <button id="btn-toggle-sound" class="icon-btn" title="Bật/Tắt âm thanh hiệu ứng" aria-label="Bật hoặc tắt âm thanh">
           <i class="fa-solid fa-volume-high"></i>
@@ -163,15 +169,15 @@
         <!-- Left: Quick Add Daily Earnings Form -->
         <section class="daily-deposit-card">
           <div class="card-header">
-            <h3><i class="fa-solid fa-hand-holding-dollar"></i> Đánh Dấu Tiền Hôm Nay</h3>
-            <span class="card-subtitle">Mỗi ngày tích một ít, thành công đến bất ngờ</span>
+            <h3><i class="fa-solid fa-hand-holding-dollar"></i> Nạp Tiền Vào Quỹ</h3>
+            <span class="card-subtitle">Tích lũy từng khoản nhỏ, hoàn thành mục tiêu lớn</span>
           </div>
 
           <form id="form-add-deposit" class="deposit-form">
             <!-- Amount Input -->
             <div class="form-group">
               <label for="deposit-amount">
-                <span>Số tiền kiếm được hôm nay</span>
+                <span>Số tiền nạp vào quỹ</span>
                 <span class="required-star">*</span>
               </label>
               <div class="input-with-currency">
@@ -244,7 +250,7 @@
             <div class="streak-icon">🔥</div>
             <div class="streak-content">
               <div class="streak-title" id="streak-title">Chuỗi tích lũy: 0 ngày liên tiếp</div>
-              <p class="streak-desc" id="streak-desc">Hãy nạp đều đặn mỗi ngày để duy trì thói quen tài chính tốt nhé!</p>
+              <p class="streak-desc" id="streak-desc">Tích lũy đều đặn giúp bạn nhanh chóng chạm đến mục tiêu!</p>
             </div>
           </div>
         </section>
@@ -277,29 +283,29 @@
       <section class="analytics-card">
         <div class="card-header">
           <h3><i class="fa-solid fa-chart-line"></i> Phân Tích &amp; Mốc Chinh Phục</h3>
-          <span class="card-subtitle">Theo dõi tốc độ và các cột mốc quan trọng</span>
+          <span class="card-subtitle">Theo dõi tiến độ tích luỹ và các cột mốc quan trọng</span>
         </div>
 
         <div class="analytics-grid">
           <div class="stat-box">
-            <span class="stat-label">Trung bình mỗi ngày nạp</span>
-            <span class="stat-value" id="stat-avg-daily">0 ₫</span>
-            <span class="stat-sub">Dựa trên các ngày có đóng góp</span>
+            <span class="stat-label">Trung bình mỗi lần nạp</span>
+            <span class="stat-value" id="stat-avg-deposit">0 ₫</span>
+            <span class="stat-sub" id="stat-avg-sub">Chưa có giao dịch nạp</span>
           </div>
           <div class="stat-box">
-            <span class="stat-label">Số ngày cần tiếp tục</span>
-            <span class="stat-value" id="stat-days-needed">-- ngày</span>
-            <span class="stat-sub">Dự kiến theo tốc độ hiện tại</span>
+            <span class="stat-label">Ước tính cần thêm</span>
+            <span class="stat-value" id="stat-deposits-needed">-- lần</span>
+            <span class="stat-sub" id="stat-deposits-sub">Theo mức trung bình mỗi lần</span>
           </div>
           <div class="stat-box">
             <span class="stat-label">Khoản nạp lớn nhất</span>
             <span class="stat-value" id="stat-max-entry">0 ₫</span>
-            <span class="stat-sub">Kỷ lục trong 1 ngày</span>
+            <span class="stat-sub" id="stat-max-sub">Kỷ lục trong 1 lần nạp</span>
           </div>
           <div class="stat-box">
-            <span class="stat-label">Dự kiến hoàn thành</span>
-            <span class="stat-value" id="stat-eta-date">--/--/----</span>
-            <span class="stat-sub">Cột mốc về đích 100%</span>
+            <span class="stat-label" id="stat-deadline-label">Hạn chót mục tiêu</span>
+            <span class="stat-value" id="stat-eta-date">Linh hoạt</span>
+            <span class="stat-sub" id="stat-eta-sub">Không áp đặt ngày hoàn thành</span>
           </div>
         </div>
 
@@ -341,14 +347,7 @@
         <i class="fa-solid fa-piggy-bank"></i>
       </div>
       <h2>Bạn Chưa Có Quỹ Mục Tiêu Nào</h2>
-      <p>Hãy tạo quỹ đầu tiên để bắt đầu đặt mục tiêu tiền và đánh dấu số tiền kiếm được mỗi ngày nhé!</p>
-      <div class="preset-templates-row">
-        <span>Gợi ý mẫu:</span>
-        <button class="preset-btn" data-name="Quỹ Mua iPhone 16 Pro" data-target="32000000" data-icon="📱" data-cat="Đồ Công Nghệ">📱 Mua iPhone</button>
-        <button class="preset-btn" data-name="Quỹ Khẩn Cấp 3 Tháng" data-target="25000000" data-icon="🛡️" data-cat="Tiết Kiệm An Toàn">🛡️ Quỹ Khẩn Cấp</button>
-        <button class="preset-btn" data-name="Quỹ Du Lịch Đà Lạt" data-target="8000000" data-icon="✈️" data-cat="Du Lịch & Giải Trí">✈️ Đi Du Lịch</button>
-        <button class="preset-btn" data-name="Quỹ Tự Do Tài Chính" data-target="100000000" data-icon="💰" data-cat="Tự Do Tài Chính">💰 100 Triệu Đầu Tiên</button>
-      </div>
+      <p>Hãy tạo quỹ đầu tiên để bắt đầu đặt mục tiêu tiền và tích lũy tài chính nhé!</p>
       <button id="btn-create-first-fund" class="btn btn-primary btn-large btn-glow">
         <i class="fa-solid fa-plus-circle"></i> Tạo Quỹ Mục Tiêu Ngay
       </button>
@@ -357,13 +356,14 @@
     <!-- Footer -->
     <footer class="app-footer">
       <div class="footer-info">
-        <span>© 2026 Tích Tiểu Thành Đại &bull; Ứng dụng theo dõi mục tiêu tiền mỗi ngày</span>
+        <span>© 2026 Tích Tiểu Thành Đại &bull; Quản lý và theo dõi mục tiêu tài chính thông minh</span>
       </div>
       <div class="footer-actions">
+        <button id="btn-footer-sync" class="link-btn"><i class="fa-solid fa-cloud-arrow-up"></i> Đồng bộ PC &amp; ĐT</button>
         <button id="btn-backup-data" class="link-btn"><i class="fa-solid fa-download"></i> Sao lưu JSON</button>
         <button id="btn-restore-data" class="link-btn"><i class="fa-solid fa-upload"></i> Khôi phục</button>
         <input type="file" id="file-restore-input" accept=".json" style="display: none;">
-        <button id="btn-load-sample-data" class="link-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Nạp dữ liệu mẫu</button>
+        <button id="btn-clear-all-funds" class="link-btn link-btn-danger"><i class="fa-solid fa-trash-can"></i> Xóa tất cả các quỹ</button>
       </div>
     </footer>
   </div>
@@ -496,6 +496,119 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CLOUD SYNC -->
+  <div class="modal-backdrop" id="modal-cloud-sync" aria-hidden="true">
+    <div class="modal-window modal-sync-window" role="dialog" aria-labelledby="modal-sync-title">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <h3 id="modal-sync-title">Đồng Bộ Đa Thiết Bị (PC &amp; Điện Thoại)</h3>
+        </div>
+        <button class="icon-btn sm modal-close" id="btn-close-sync-modal" aria-label="Đóng">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body sync-modal-content">
+        <!-- Current Sync Status Banner -->
+        <div class="sync-status-banner" id="sync-status-banner">
+          <div class="status-indicator-box">
+            <span class="pulse-dot offline" id="sync-pulse-dot"></span>
+            <div>
+              <strong id="sync-status-title">Chưa kết nối Cloud</strong>
+              <p id="sync-status-desc">Dữ liệu hiện chỉ lưu trên trình duyệt máy này.</p>
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary sm" id="btn-disconnect-sync" style="display: none;">
+            <i class="fa-solid fa-link-slash"></i> Ngắt kết nối
+          </button>
+        </div>
+
+        <!-- Sync Configuration Form -->
+        <form id="form-cloud-sync" class="modal-form">
+          <!-- Room PIN Code -->
+          <div class="form-group">
+            <label for="sync-pin-input">
+              <span>Mã Đồng Bộ (PIN 6 số bí mật)</span>
+              <span class="required-star">*</span>
+            </label>
+            <div class="input-with-action">
+              <input 
+                type="text" 
+                id="sync-pin-input" 
+                placeholder="Ví dụ: 829104" 
+                maxlength="16" 
+                required
+              >
+              <button type="button" class="btn-input-action" id="btn-generate-pin" title="Tạo mã ngẫu nhiên">
+                <i class="fa-solid fa-shuffle"></i> Tạo mã
+              </button>
+            </div>
+            <span class="form-hint">Nhập cùng mã này trên điện thoại để đồng bộ vào cùng một phòng dữ liệu.</span>
+          </div>
+
+          <!-- Firebase Database URL -->
+          <div class="form-group">
+            <label for="sync-db-url">
+              <span>Đường dẫn Firebase Database (Miễn phí)</span>
+              <span class="required-star">*</span>
+            </label>
+            <input 
+              type="url" 
+              id="sync-db-url" 
+              placeholder="https://du-an-cua-ban-default-rtdb.firebaseio.com" 
+              required
+            >
+            <span class="form-hint">Dùng Realtime Database của Google Firebase (Miễn phí 100% vĩnh viễn, cập nhật thời gian thực).</span>
+          </div>
+
+          <!-- Quick Instruction Dropdown -->
+          <details class="sync-guide-details">
+            <summary><i class="fa-solid fa-circle-question"></i> Hướng dẫn 3 bước tạo Firebase Realtime Database miễn phí</summary>
+            <div class="guide-steps-box">
+              <ol>
+                <li>Vào <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">console.firebase.google.com</a> và đăng nhập bằng tài khoản Google.</li>
+                <li>Bấm <strong>Tạo dự án</strong> (Đặt tên tùy ý, tắt Google Analytics để tạo nhanh trong 10 giây).</li>
+                <li>Chọn menu <strong>Realtime Database</strong> &gt; Bấm <strong>Tạo cơ sở dữ liệu</strong> &gt; Chọn <strong>Bắt đầu ở chế độ thử nghiệm (Start in test mode)</strong>.</li>
+                <li>Copy đường dẫn URL dạng <code>https://&lt;tên-dự-án&gt;-default-rtdb.firebaseio.com/</code> và dán vào ô trên.</li>
+              </ol>
+            </div>
+          </details>
+
+          <!-- Connected Sharing Info: QR Code & Link -->
+          <div class="sync-connected-share" id="sync-connected-share" style="display: none;">
+            <div class="share-divider"><span>KẾT NỐI NHANH QUA ĐIỆN THOẠI</span></div>
+            <div class="qr-share-wrapper">
+              <div class="qr-box">
+                <img id="sync-qr-image" src="" alt="Mã QR Đồng Bộ" width="140" height="140">
+              </div>
+              <div class="qr-info">
+                <h4>Quét bằng Camera Điện Thoại</h4>
+                <p>Mở camera trên iPhone hoặc Android quét mã này, điện thoại sẽ tự động mở web và đồng bộ dữ liệu ngay lập tức!</p>
+                <div class="share-link-group">
+                  <input type="text" id="sync-share-link" readonly value="">
+                  <button type="button" class="btn btn-secondary sm" id="btn-copy-sync-link">
+                    <i class="fa-regular fa-copy"></i> Copy Link
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-sync">Đóng</button>
+            <button type="button" class="btn btn-secondary" id="btn-sync-now" style="display: none;">
+              <i class="fa-solid fa-arrows-rotate"></i> Đồng bộ ngay
+            </button>
+            <button type="submit" class="btn btn-primary btn-glow" id="btn-save-sync">
+              <i class="fa-solid fa-link"></i> Kết Nối &amp; Bắt Đầu Đồng Bộ
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 

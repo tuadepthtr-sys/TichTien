@@ -22,13 +22,18 @@
    - Thanh tiến độ tuyến tính với các cột mốc: `25%` (Khởi động), `50%` (Nửa chặng), `75%` (Tăng tốc), `100%` (Về đích).
    - Thống kê 3 chỉ số tài chính cốt lõi: **Số Tiền Đã Tích Luỹ**, **Mục Tiêu Đặt Ra**, và **Còn Thiếu Cần Kiếm**.
 
-4. **Phân tích & Dự báo**:
-   - **Tốc độ trung bình mỗi ngày**: Tính toán lượng tiền tích lũy bình quân.
-   - **Số ngày cần tiếp tục**: Dự báo số ngày còn lại để cán đích.
-   - **Ngày dự kiến hoàn thành**: Ước tính chính xác ngày về đích 100%.
-   - **Chuỗi tích lũy liên tiếp (Streak 🔥)**: Giúp rèn luyện thói quen kỷ luật tài chính mỗi ngày.
+4. **Phân tích & Ước tính thực tế**:
+   - **Trung bình mỗi lần nạp**: Tính toán số tiền bình quân trên các lần nạp vào quỹ (không áp đặt tính theo ngày, tránh hiểu lầm).
+   - **Ước tính cần thêm**: Dự tính số lần nạp tiếp theo cần đạt được để hoàn tất mục tiêu.
+   - **Khoản nạp lớn nhất**: Ghi nhận kỷ lục khoản nạp cao nhất trong 1 lần.
+   - **Hạn chót mục tiêu**: Theo dõi sát sao ngày hoàn thành do người dùng tự đặt ra (hoặc linh hoạt tự do).
 
-5. **Hiệu ứng & Trải nghiệm đỉnh cao**:
+5. **Đồng bộ đa thiết bị (PC & Điện thoại)**:
+   - **Đồng bộ Cloud tự động thời gian thực (Firebase Realtime DB)**: Cập nhật 2 chiều tức thì (dưới 0.2s) giữa máy tính và điện thoại.
+   - **Mã QR & Link 1-Click**: Mở camera điện thoại quét mã QR trên màn hình PC là tự động kết nối và đồng bộ ngay lập tức, không cần nhập lại bất cứ thông tin nào!
+   - **Mã Đồng Bộ (PIN 6 số)**: Bảo mật và độc lập cho từng phòng dữ liệu cá nhân.
+
+6. **Hiệu ứng & Trải nghiệm đỉnh cao**:
    - Pháo hoa giấy (Confetti) chúc mừng khi nạp tiền và đạt mốc 100%.
    - Âm thanh tích tắc xu vui nhộn (tổng hợp trực tiếp qua Web Audio API, không cần tải file ngoài).
    - Giao diện Dark Mode huyền bí và Light Mode trang nhã.
@@ -37,17 +42,24 @@
 
 ---
 
-## 🚀 Hướng Dẫn Sử Dụng
+## 🚀 Hướng Dẫn Sử Dụng & Đồng Bộ
 
-### Cách 1: Mở trực tiếp bằng trình duyệt
-Chỉ cần nhấp đúp vào file [index.html](file:///c:/Users/Admin/Downloads/Discord%20Tool/tichtien/index.html) bằng bất kỳ trình duyệt nào (Chrome, Edge, Cốc Cốc, Brave, Safari, Firefox).
+### Cách 1: Mở trực tiếp trên PC
+Chỉ cần nhấp đúp vào file [index.html](file:///c:/Users/Admin/Downloads/Discord%20Tool/tichtien/index.html) bằng bất kỳ trình duyệt nào (Chrome, Edge, Cốc Cốc, Brave, Safari).
 
-### Cách 2: Khởi chạy Web Server cục bộ
+### Cách 2: Đồng bộ lên Điện thoại qua Cloud (Khuyên dùng)
+1. Bấm nút **"Đồng Bộ Cloud"** ở góc trên thanh công cụ.
+2. Nhập Mã PIN (ví dụ: `829104`) và đường dẫn Firebase Database miễn phí (có hướng dẫn 3 bước ngay trong cửa sổ).
+3. Bấm **Kết Nối**. Màn hình sẽ hiện mã **QR Code**.
+4. Lấy điện thoại mở Camera quét mã QR để mở trang web -> Dữ liệu trên PC và điện thoại sẽ tự động đồng bộ thời gian thực mỗi khi bạn nạp tiền!
+
+### Cách 3: Chạy máy chủ mạng Wi-Fi nội bộ
+Nếu muốn điện thoại truy cập trực tiếp qua cùng mạng Wi-Fi trong nhà:
 Mở PowerShell trong thư mục dự án và chạy:
 ```powershell
-python -m http.server 5533
+python server.py
 ```
-Sau đó truy cập: `http://localhost:5533`
+Màn hình sẽ hiển thị địa chỉ IP (ví dụ `http://192.168.1.15:5544`), chỉ cần nhập địa chỉ đó vào trình duyệt điện thoại là xong!
 
 ---
 

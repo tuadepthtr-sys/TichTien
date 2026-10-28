@@ -6,10 +6,11 @@
   'use strict';
 
   // --- STORAGE KEYS ---
-  const STORAGE_KEY_FUNDS = 'tttd_funds_data_v1';
-  const STORAGE_KEY_ACTIVE = 'tttd_active_fund_id';
+  const STORAGE_KEY_FUNDS = 'tttd_funds_data_clean';
+  const STORAGE_KEY_ACTIVE = 'tttd_active_fund_clean';
   const STORAGE_KEY_THEME = 'tttd_user_theme';
   const STORAGE_KEY_SOUND = 'tttd_sound_setting';
+  const STORAGE_KEY_SYNC_CONFIG = 'tttd_sync_config_v1';
 
   // --- CIRCUMFERENCE CONSTANT FOR 82px RADIUS SVG CIRCLE ---
   const CIRCLE_RADIUS = 82;
@@ -19,6 +20,16 @@
   let funds = [];
   let activeFundId = null;
   let soundEnabled = true;
+
+  // --- CLOUD SYNC STATE ---
+  let syncConfig = {
+    enabled: false,
+    dbUrl: '',
+    pin: '',
+    lastSyncTime: null
+  };
+  let eventSourceInstance = null;
+  let lastLocalPushTimestamp = 0;
 
   // --- AUDIO SYNTHESIZER (Web Audio API) ---
   let audioCtx = null;
@@ -208,124 +219,25 @@
     return 'id_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
   }
 
-  // --- SEED SAMPLE DATA (When fresh start) ---
-  function createSampleData() {
-    const today = new Date();
-    const formatD = (daysAgo) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() - daysAgo);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    };
-
-    const sampleFund1 = {
-      id: generateId(),
-      name: 'Quỹ Đổi iPhone 16 Pro Max',
-      target: 34000000,
-      category: 'Đồ Công Nghệ',
-      icon: '📱',
-      deadline: `${today.getFullYear()}-12-31`,
-      description: 'Cày thêm dự án và tiết kiệm mỗi ngày để tự thưởng bản thân!',
-      createdAt: formatD(7),
-      entries: [
-        {
-          id: generateId(),
-          date: formatD(6),
-          amount: 5000000,
-          type: 'income',
-          note: 'Số tiền tiết kiệm ban đầu',
-          timestamp: Date.now() - 6 * 86400000
-        },
-        {
-          id: generateId(),
-          date: formatD(4),
-          amount: 800000,
-          type: 'income',
-          note: 'Làm thêm ca ngoài giờ',
-          timestamp: Date.now() - 4 * 86400000
-        },
-        {
-          id: generateId(),
-          date: formatD(3),
-          amount: 1200000,
-          type: 'income',
-          note: 'Bán đồ cũ không dùng',
-          timestamp: Date.now() - 3 * 86400000
-        },
-        {
-          id: generateId(),
-          date: formatD(2),
-          amount: 500000,
-          type: 'income',
-          note: 'Tiền thưởng tuần',
-          timestamp: Date.now() - 2 * 86400000
-        },
-        {
-          id: generateId(),
-          date: formatD(1),
-          amount: 650000,
-          type: 'income',
-          note: 'Tiết kiệm chi tiêu trong ngày',
-          timestamp: Date.now() - 1 * 86400000
-        },
-        {
-          id: generateId(),
-          date: formatD(0),
-          amount: 850000,
-          type: 'income',
-          note: 'Thu nhập kiếm được hôm nay',
-          timestamp: Date.now()
-        }
-      ]
-    };
-
-    const sampleFund2 = {
-      id: generateId(),
-      name: 'Quỹ Du Lịch Đà Lạt 4N3Đ',
-      target: 7500000,
-      category: 'Du Lịch',
-      icon: '✈️',
-      deadline: `${today.getFullYear()}-09-15`,
-      description: 'Chuyến vi vu cùng bạn bè khám phá đồi thông và săn mây.',
-      createdAt: formatD(10),
-      entries: [
-        {
-          id: generateId(),
-          date: formatD(5),
-          amount: 2000000,
-          type: 'income',
-          note: 'Trích từ tiền lương',
-          timestamp: Date.now() - 5 * 86400000
-        },
-        {
-          id: generateId(),
-          date: formatD(2),
-          amount: 1500000,
-          type: 'income',
-          note: 'Tiền thưởng dự án',
-          timestamp: Date.now() - 2 * 86400000
-        }
-      ]
-    };
-
-    return [sampleFund1, sampleFund2];
-  }
-
   // --- LOCAL STORAGE HANDLING ---
   function loadFundsFromStorage() {
+    // Xóa sạch các dữ liệu mẫu hoặc key cũ trước đây
+    try {
+      ['tttd_funds_data_v1', 'tttd_active_fund_id', 'tttd_funds_data_v2', 'tttd_active_fund_id_v2'].forEach(key => {
+        localStorage.removeItem(key);
+      });
+    } catch (e) {}
+
     try {
       const data = localStorage.getItem(STORAGE_KEY_FUNDS);
       if (data) {
         funds = JSON.parse(data);
       } else {
-        funds = createSampleData();
-        saveFundsToStorage();
+        funds = [];
       }
     } catch (e) {
       console.error('Failed to load funds from storage', e);
-      funds = createSampleData();
+      funds = [];
     }
 
     const savedActiveId = localStorage.getItem(STORAGE_KEY_ACTIVE);
@@ -348,15 +260,21 @@
     updateSoundButtonIcon();
   }
 
-  function saveFundsToStorage() {
+  function saveFundsToStorage(skipCloudPush = false) {
     try {
       localStorage.setItem(STORAGE_KEY_FUNDS, JSON.stringify(funds));
       if (activeFundId) {
         localStorage.setItem(STORAGE_KEY_ACTIVE, activeFundId);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_ACTIVE);
       }
     } catch (e) {
       console.error('Failed to save to localStorage', e);
       showToast('Bộ nhớ trình duyệt đầy, không thể lưu dữ liệu!', 'error');
+    }
+
+    if (!skipCloudPush && syncConfig && syncConfig.enabled) {
+      pushFundsToCloud();
     }
   }
 
@@ -510,16 +428,16 @@
       statusBadgeEl.textContent = 'Đã Qua Nửa Chặng ⚡';
       statusBadgeEl.style.color = 'var(--accent-cyan)';
       milestoneHintEl.textContent = `Đã đi được ${formattedPercent}% chặng đường!`;
-      paceEstimateEl.textContent = 'Duy trì phong độ rất tốt!';
+      paceEstimateEl.textContent = 'Duy trì tiến độ rất tốt!';
     } else if (percent > 0) {
       statusBadgeEl.textContent = 'Đang Tích Luỹ 📈';
       statusBadgeEl.style.color = 'var(--text-muted)';
       milestoneHintEl.textContent = `Đã tích luỹ ${formattedPercent}% mục tiêu`;
-      paceEstimateEl.textContent = 'Tích tiểu thành đại mỗi ngày!';
+      paceEstimateEl.textContent = 'Tích tiểu thành đại!';
     } else {
       statusBadgeEl.textContent = 'Bắt Đầu 🌱';
       statusBadgeEl.style.color = 'var(--text-dim)';
-      milestoneHintEl.textContent = 'Hãy ghi nhận khoản tiền kiếm được đầu tiên!';
+      milestoneHintEl.textContent = 'Hãy ghi nhận khoản tiền nạp đầu tiên!';
       paceEstimateEl.textContent = 'Bắt đầu hành trình ngay hôm nay';
     }
 
@@ -546,11 +464,11 @@
     if (streakDays >= 7) {
       streakDescEl.textContent = 'Kỷ luật thép! Bạn đang duy trì thói quen tích luỹ vô cùng xuất sắc!';
     } else if (streakDays >= 3) {
-      streakDescEl.textContent = 'Phong độ rất tốt! Hãy tiếp tục duy trì sang tuần mới nhé!';
+      streakDescEl.textContent = 'Phong độ rất tốt! Hãy tiếp tục duy trì nhé!';
     } else if (streakDays > 0) {
-      streakDescEl.textContent = 'Khởi đầu tuyệt vời! Đừng để gián đoạn ngày mai nha!';
+      streakDescEl.textContent = 'Khởi đầu tuyệt vời! Hãy tiếp tục nạp thêm khi có thu nhập mới!';
     } else {
-      streakDescEl.textContent = 'Chưa có ghi nhận hôm nay hoặc hôm qua. Nạp ngay để bắt đầu chuỗi nhé!';
+      streakDescEl.textContent = 'Ghi nhận giao dịch nạp tiền để theo dõi chuỗi tích luỹ!';
     }
 
     // Milestones track
@@ -582,50 +500,79 @@
   }
 
   function renderAnalytics(fund, totalAccumulated, remainingMoney) {
-    const entries = (fund.entries || []).filter(e => e.type === 'income' && e.amount > 0);
+    const incomeEntries = (fund.entries || []).filter(e => (e.type === 'income' || (!e.type && e.amount > 0)) && e.amount > 0);
 
-    const statAvgEl = document.getElementById('stat-avg-daily');
-    const statDaysEl = document.getElementById('stat-days-needed');
+    const statAvgEl = document.getElementById('stat-avg-deposit');
+    const statAvgSub = document.getElementById('stat-avg-sub');
+    const statDepositsEl = document.getElementById('stat-deposits-needed');
+    const statDepositsSub = document.getElementById('stat-deposits-sub');
     const statMaxEl = document.getElementById('stat-max-entry');
+    const statMaxSub = document.getElementById('stat-max-sub');
+    const statDeadlineLabel = document.getElementById('stat-deadline-label');
     const statEtaEl = document.getElementById('stat-eta-date');
+    const statEtaSub = document.getElementById('stat-eta-sub');
 
-    if (entries.length === 0) {
+    if (!statAvgEl) return;
+
+    const count = incomeEntries.length;
+    const totalIncome = incomeEntries.reduce((sum, item) => sum + item.amount, 0);
+
+    if (count === 0) {
       statAvgEl.textContent = '0 ₫';
-      statDaysEl.textContent = '-- ngày';
-      statMaxEl.textContent = '0 ₫';
-      statEtaEl.textContent = '--/--/----';
-      return;
-    }
-
-    // Unique days
-    const uniqueDays = new Set(entries.map(e => e.date)).size;
-    const avgDaily = uniqueDays > 0 ? totalAccumulated / uniqueDays : 0;
-    statAvgEl.textContent = formatMoney(avgDaily);
-
-    // Max entry
-    const maxEntry = Math.max(...entries.map(e => e.amount));
-    statMaxEl.textContent = formatMoney(maxEntry);
-
-    // Days needed
-    if (remainingMoney <= 0) {
-      statDaysEl.textContent = 'Đã hoàn thành!';
-      statEtaEl.textContent = 'Mục tiêu hoàn tất 🎊';
-      return;
-    }
-
-    if (avgDaily > 0) {
-      const daysNeeded = Math.ceil(remainingMoney / avgDaily);
-      statDaysEl.textContent = `Khoảng ${daysNeeded} ngày`;
-
-      const etaDate = new Date();
-      etaDate.setDate(etaDate.getDate() + daysNeeded);
-      const y = etaDate.getFullYear();
-      const m = String(etaDate.getMonth() + 1).padStart(2, '0');
-      const d = String(etaDate.getDate()).padStart(2, '0');
-      statEtaEl.textContent = `${d}/${m}/${y}`;
+      if (statAvgSub) statAvgSub.textContent = 'Chưa có lượt nạp tiền nào';
+      if (statDepositsEl) statDepositsEl.textContent = '-- lần';
+      if (statDepositsSub) statDepositsSub.textContent = 'Cần nạp thêm để ước tính';
+      if (statMaxEl) statMaxEl.textContent = '0 ₫';
+      if (statMaxSub) statMaxSub.textContent = 'Kỷ lục trong 1 lần nạp';
     } else {
-      statDaysEl.textContent = '-- ngày';
-      statEtaEl.textContent = '--/--/----';
+      const avgPerDeposit = totalIncome / count;
+      statAvgEl.textContent = formatMoney(avgPerDeposit);
+      if (statAvgSub) {
+        statAvgSub.textContent = count === 1 ? 'Dựa trên 1 lần nạp tiền' : `Bình quân trên ${count} lần nạp`;
+      }
+
+      if (remainingMoney <= 0) {
+        if (statDepositsEl) statDepositsEl.textContent = '0 lần 🎉';
+        if (statDepositsSub) statDepositsSub.textContent = 'Mục tiêu đã hoàn tất 100%';
+      } else {
+        const depositsNeeded = Math.ceil(remainingMoney / avgPerDeposit);
+        if (statDepositsEl) statDepositsEl.textContent = `Khoảng ${depositsNeeded} lần`;
+        if (statDepositsSub) statDepositsSub.textContent = `Nếu duy trì ~${formatMoney(avgPerDeposit)}/lần`;
+      }
+
+      const maxEntry = Math.max(...incomeEntries.map(e => e.amount));
+      if (statMaxEl) statMaxEl.textContent = formatMoney(maxEntry);
+      if (statMaxSub) statMaxSub.textContent = 'Kỷ lục trong 1 lần nạp';
+    }
+
+    // Deadline & Kế hoạch thời gian (Không tự tiện suy diễn ngày hoàn thành khi không có hạn chót)
+    if (remainingMoney <= 0) {
+      if (statDeadlineLabel) statDeadlineLabel.textContent = 'Trạng thái';
+      if (statEtaEl) statEtaEl.textContent = 'Đã Hoàn Thành 🎊';
+      if (statEtaSub) statEtaSub.textContent = 'Cán đích mục tiêu 100%';
+    } else if (fund.deadline) {
+      if (statDeadlineLabel) statDeadlineLabel.textContent = 'Hạn chót mục tiêu';
+      if (statEtaEl) statEtaEl.textContent = formatDateVietnamese(fund.deadline);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const deadlineDate = new Date(fund.deadline + 'T00:00:00');
+      const diffDays = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+
+      if (statEtaSub) {
+        if (diffDays > 0) {
+          const suggestedDaily = Math.round(remainingMoney / diffDays);
+          statEtaSub.textContent = `Còn ${diffDays} ngày (Gợi ý: ~${formatMoney(suggestedDaily)}/ngày để kịp hạn)`;
+        } else if (diffDays === 0) {
+          statEtaSub.textContent = 'Hạn chót là hôm nay!';
+        } else {
+          statEtaSub.textContent = `Đã qua hạn ${Math.abs(diffDays)} ngày`;
+        }
+      }
+    } else {
+      if (statDeadlineLabel) statDeadlineLabel.textContent = 'Kế hoạch thời gian';
+      if (statEtaEl) statEtaEl.textContent = 'Linh hoạt';
+      if (statEtaSub) statEtaSub.textContent = 'Tự do tích lũy, không áp lực ngày';
     }
   }
 
@@ -849,6 +796,21 @@
     }
   }
 
+  function clearAllFunds() {
+    if (funds.length === 0) {
+      showToast('Hiện không có quỹ nào để xóa!', 'info');
+      return;
+    }
+
+    if (confirm('Bạn có chắc chắn muốn xóa tất cả các quỹ mục tiêu? Toàn bộ dữ liệu sẽ được xóa sạch và không thể hoàn tác!')) {
+      funds = [];
+      activeFundId = null;
+      saveFundsToStorage();
+      renderApp();
+      showToast('Đã xóa tất cả các quỹ thành công!', 'info');
+    }
+  }
+
   // --- ACTIONS: DAILY DEPOSIT SUBMIT ---
   function handleDepositSubmit(e) {
     e.preventDefault();
@@ -997,6 +959,286 @@
     reader.readAsText(file);
   }
 
+  // --- CLOUD SYNC ENGINE (FIREBASE REALTIME DB / SSE REALTIME STREAM) ---
+  function normalizeFirebaseUrl(url) {
+    if (!url) return '';
+    let clean = url.trim();
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = 'https://' + clean;
+    }
+    return clean.replace(/\/+$/, '');
+  }
+
+  function generateSyncPin() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  function updateSyncStatusUI(status, message = '') {
+    const statusDot = document.getElementById('sync-status-dot');
+    const btnLabel = document.getElementById('sync-btn-label');
+    const pulseDot = document.getElementById('sync-pulse-dot');
+    const statusTitle = document.getElementById('sync-status-title');
+    const statusDesc = document.getElementById('sync-status-desc');
+    const disconnectBtn = document.getElementById('btn-disconnect-sync');
+    const syncNowBtn = document.getElementById('btn-sync-now');
+    const banner = document.getElementById('sync-status-banner');
+    const shareArea = document.getElementById('sync-connected-share');
+    const qrImg = document.getElementById('sync-qr-image');
+    const shareLink = document.getElementById('sync-share-link');
+
+    if (!statusDot) return;
+
+    statusDot.className = 'sync-status-dot ' + status;
+    if (pulseDot) pulseDot.className = 'pulse-dot ' + status;
+    if (banner) {
+      if (status === 'connected') banner.classList.add('connected');
+      else banner.classList.remove('connected');
+    }
+
+    if (status === 'connected') {
+      if (btnLabel) btnLabel.textContent = `Đang Đồng Bộ (${syncConfig.pin})`;
+      if (statusTitle) statusTitle.textContent = `🟢 Đang kết nối phòng: ${syncConfig.pin}`;
+      if (statusDesc) statusDesc.textContent = message || 'Dữ liệu được cập nhật 2 chiều tự động thời gian thực.';
+      if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
+      if (syncNowBtn) syncNowBtn.style.display = 'inline-flex';
+      if (shareArea) shareArea.style.display = 'block';
+
+      // Generate share link & QR code
+      const currentUrl = window.location.href.split('?')[0];
+      const fullShareUrl = `${currentUrl}?sync_db=${encodeURIComponent(syncConfig.dbUrl)}&sync_pin=${encodeURIComponent(syncConfig.pin)}`;
+      if (shareLink) shareLink.value = fullShareUrl;
+      if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(fullShareUrl)}`;
+      }
+    } else if (status === 'syncing') {
+      if (btnLabel) btnLabel.textContent = 'Đang đồng bộ...';
+      if (statusTitle) statusTitle.textContent = '⚡ Đang truyền dữ liệu...';
+      if (statusDesc) statusDesc.textContent = message || 'Đang kết nối và đồng bộ với Cloud.';
+    } else {
+      if (btnLabel) btnLabel.textContent = 'Đồng Bộ Cloud';
+      if (statusTitle) statusTitle.textContent = '⚪ Chưa kết nối Cloud';
+      if (statusDesc) statusDesc.textContent = message || 'Dữ liệu hiện chỉ lưu trên trình duyệt máy này.';
+      if (disconnectBtn) disconnectBtn.style.display = 'none';
+      if (syncNowBtn) syncNowBtn.style.display = 'none';
+      if (shareArea) shareArea.style.display = 'none';
+    }
+  }
+
+  async function pushFundsToCloud() {
+    if (!syncConfig.enabled || !syncConfig.dbUrl || !syncConfig.pin) return;
+
+    try {
+      updateSyncStatusUI('syncing', 'Đang tải dữ liệu lên Cloud...');
+      lastLocalPushTimestamp = Date.now();
+      const endpoint = `${syncConfig.dbUrl}/sync_rooms/${syncConfig.pin}.json`;
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          funds: funds,
+          activeFundId: activeFundId,
+          updatedAt: lastLocalPushTimestamp
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+
+      syncConfig.lastSyncTime = lastLocalPushTimestamp;
+      localStorage.setItem(STORAGE_KEY_SYNC_CONFIG, JSON.stringify(syncConfig));
+      updateSyncStatusUI('connected', `Đã đồng bộ lúc ${new Date().toLocaleTimeString('vi-VN')}`);
+    } catch (err) {
+      console.warn('Cloud push error:', err);
+      updateSyncStatusUI('offline', 'Không thể kết nối Cloud (kiểm tra lại URL hoặc mạng)');
+    }
+  }
+
+  async function fetchFundsFromCloud(silent = false) {
+    if (!syncConfig.enabled || !syncConfig.dbUrl || !syncConfig.pin) return;
+
+    try {
+      updateSyncStatusUI('syncing', 'Đang kéo dữ liệu từ Cloud...');
+      const endpoint = `${syncConfig.dbUrl}/sync_rooms/${syncConfig.pin}.json`;
+      const response = await fetch(endpoint);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+
+      const remoteData = await response.json();
+
+      if (remoteData && Array.isArray(remoteData.funds)) {
+        // If cloud data exists and is valid
+        if (!remoteData.updatedAt || remoteData.updatedAt >= (syncConfig.lastSyncTime || 0)) {
+          funds = remoteData.funds;
+          activeFundId = remoteData.activeFundId || (funds[0] ? funds[0].id : null);
+          syncConfig.lastSyncTime = remoteData.updatedAt || Date.now();
+          saveFundsToStorage(true); // Don't re-push to cloud
+          renderApp();
+          if (!silent) {
+            showToast(`Đã đồng bộ ${funds.length} quỹ từ Cloud!`, 'success', 'fa-solid fa-cloud-arrow-down');
+          }
+        }
+      } else if (!remoteData && funds.length > 0) {
+        // Cloud room is empty, push local funds up
+        await pushFundsToCloud();
+      }
+
+      updateSyncStatusUI('connected', `Đã đồng bộ lúc ${new Date().toLocaleTimeString('vi-VN')}`);
+    } catch (err) {
+      console.warn('Cloud fetch error:', err);
+      updateSyncStatusUI('offline', 'Không thể tải từ Cloud (kiểm tra lại URL hoặc mạng)');
+    }
+  }
+
+  function startRealtimeStream() {
+    if (!syncConfig.enabled || !syncConfig.dbUrl || !syncConfig.pin) return;
+
+    if (eventSourceInstance) {
+      eventSourceInstance.close();
+      eventSourceInstance = null;
+    }
+
+    try {
+      const sseUrl = `${syncConfig.dbUrl}/sync_rooms/${syncConfig.pin}.json`;
+      eventSourceInstance = new EventSource(sseUrl);
+
+      eventSourceInstance.addEventListener('put', (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload && payload.data) {
+            const cloudObj = payload.data;
+            if (cloudObj.updatedAt && cloudObj.updatedAt !== lastLocalPushTimestamp) {
+              if (Array.isArray(cloudObj.funds)) {
+                funds = cloudObj.funds;
+                activeFundId = cloudObj.activeFundId || (funds[0] ? funds[0].id : null);
+                syncConfig.lastSyncTime = cloudObj.updatedAt;
+                saveFundsToStorage(true); // Don't bounce back
+                renderApp();
+                showToast('Đã nhận cập nhật mới từ thiết bị khác!', 'info', 'fa-solid fa-cloud-bolt');
+                updateSyncStatusUI('connected', `Cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')}`);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('SSE parse error:', err);
+        }
+      });
+
+      eventSourceInstance.onerror = () => {
+        // SSE will attempt auto-reconnect
+      };
+    } catch (e) {
+      console.warn('SSE initialization failed:', e);
+    }
+  }
+
+  async function connectCloudSync(rawUrl, pin) {
+    const cleanUrl = normalizeFirebaseUrl(rawUrl);
+    const cleanPin = pin.trim();
+
+    if (!cleanUrl) {
+      showToast('Vui lòng nhập đường dẫn Firebase Database!', 'error');
+      return false;
+    }
+    if (!cleanPin) {
+      showToast('Vui lòng nhập Mã Đồng Bộ (PIN)!', 'error');
+      return false;
+    }
+
+    syncConfig = {
+      enabled: true,
+      dbUrl: cleanUrl,
+      pin: cleanPin,
+      lastSyncTime: 0
+    };
+
+    localStorage.setItem(STORAGE_KEY_SYNC_CONFIG, JSON.stringify(syncConfig));
+    updateSyncStatusUI('syncing', 'Đang thiết lập kết nối...');
+
+    // Test connection & pull/push initial data
+    await fetchFundsFromCloud(false);
+    startRealtimeStream();
+    playCoinSound();
+    triggerConfetti(false);
+    showToast(`Đã kết nối thành công phòng đồng bộ: ${cleanPin}!`, 'success', 'fa-solid fa-cloud-check');
+    return true;
+  }
+
+  function disconnectCloudSync() {
+    if (eventSourceInstance) {
+      eventSourceInstance.close();
+      eventSourceInstance = null;
+    }
+
+    syncConfig = {
+      enabled: false,
+      dbUrl: '',
+      pin: '',
+      lastSyncTime: null
+    };
+
+    localStorage.removeItem(STORAGE_KEY_SYNC_CONFIG);
+    updateSyncStatusUI('offline', 'Đã ngắt kết nối Cloud. Dữ liệu tiếp tục lưu cục bộ.');
+    showToast('Đã ngắt kết nối Cloud', 'info');
+  }
+
+  function openSyncModal() {
+    const modal = document.getElementById('modal-cloud-sync');
+    const pinInput = document.getElementById('sync-pin-input');
+    const urlInput = document.getElementById('sync-db-url');
+
+    if (syncConfig.enabled) {
+      if (pinInput) pinInput.value = syncConfig.pin;
+      if (urlInput) urlInput.value = syncConfig.dbUrl;
+      updateSyncStatusUI('connected');
+    } else {
+      if (pinInput && !pinInput.value) pinInput.value = generateSyncPin();
+      updateSyncStatusUI('offline');
+    }
+
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeSyncModal() {
+    const modal = document.getElementById('modal-cloud-sync');
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function initCloudSync() {
+    // Check URL parameters for 1-click connect from QR code
+    const params = new URLSearchParams(window.location.search);
+    const paramDb = params.get('sync_db');
+    const paramPin = params.get('sync_pin');
+
+    if (paramDb && paramPin) {
+      connectCloudSync(paramDb, paramPin).then(() => {
+        // Clean URL params
+        window.history.replaceState({}, document.title, window.location.pathname);
+      });
+      return;
+    }
+
+    // Load saved sync config
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_SYNC_CONFIG);
+      if (saved) {
+        syncConfig = JSON.parse(saved);
+        if (syncConfig.enabled && syncConfig.dbUrl && syncConfig.pin) {
+          updateSyncStatusUI('connected');
+          fetchFundsFromCloud(true);
+          startRealtimeStream();
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load sync config', e);
+    }
+  }
+
   // --- INITIALIZE EVENT LISTENERS ---
   function initEvents() {
     // Default today date for deposit
@@ -1042,36 +1284,6 @@
       });
     });
 
-    // Preset buttons on empty state
-    const presetBtns = document.querySelectorAll('.preset-btn');
-    presetBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const name = btn.dataset.name;
-        const target = parseInt(btn.dataset.target, 10);
-        const icon = btn.dataset.icon;
-        const cat = btn.dataset.cat;
-
-        const newFundId = generateId();
-        const newFund = {
-          id: newFundId,
-          name,
-          target,
-          category: cat,
-          icon,
-          deadline: null,
-          description: `Mục tiêu khởi tạo từ mẫu ${name}`,
-          createdAt: getTodayString(),
-          entries: []
-        };
-
-        funds.push(newFund);
-        activeFundId = newFundId;
-        saveFundsToStorage();
-        renderApp();
-        showToast(`Đã tạo quỹ mẫu "${name}"!`, 'success');
-      });
-    });
-
     // Deposit form submit
     const depositForm = document.getElementById('form-add-deposit');
     if (depositForm) {
@@ -1084,19 +1296,73 @@
       fundForm.addEventListener('submit', handleFundFormSubmit);
     }
 
-    // Open/Close modal
+    // Open/Close fund modal
     document.getElementById('btn-open-create-fund')?.addEventListener('click', () => openFundModal());
     document.getElementById('btn-create-first-fund')?.addEventListener('click', () => openFundModal());
     document.getElementById('btn-close-fund-modal')?.addEventListener('click', closeFundModal);
     document.getElementById('btn-cancel-fund')?.addEventListener('click', closeFundModal);
 
-    // Close modal when clicking backdrop
+    // Close fund modal when clicking backdrop
     const modalBackdrop = document.getElementById('modal-fund');
     if (modalBackdrop) {
       modalBackdrop.addEventListener('click', (e) => {
         if (e.target === modalBackdrop) closeFundModal();
       });
     }
+
+    // Open/Close Cloud Sync modal
+    document.getElementById('btn-open-cloud-sync')?.addEventListener('click', openSyncModal);
+    document.getElementById('btn-footer-sync')?.addEventListener('click', openSyncModal);
+    document.getElementById('btn-close-sync-modal')?.addEventListener('click', closeSyncModal);
+    document.getElementById('btn-cancel-sync')?.addEventListener('click', closeSyncModal);
+
+    // Close sync modal when clicking backdrop
+    const syncModalBackdrop = document.getElementById('modal-cloud-sync');
+    if (syncModalBackdrop) {
+      syncModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === syncModalBackdrop) closeSyncModal();
+      });
+    }
+
+    // Generate random PIN
+    document.getElementById('btn-generate-pin')?.addEventListener('click', () => {
+      const pinInput = document.getElementById('sync-pin-input');
+      if (pinInput) pinInput.value = generateSyncPin();
+    });
+
+    // Form cloud sync submit
+    document.getElementById('form-cloud-sync')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = document.getElementById('sync-db-url').value;
+      const pin = document.getElementById('sync-pin-input').value;
+      await connectCloudSync(url, pin);
+    });
+
+    // Disconnect sync button
+    document.getElementById('btn-disconnect-sync')?.addEventListener('click', () => {
+      if (confirm('Bạn có chắc muốn ngắt kết nối Cloud? Dữ liệu trên trình duyệt này vẫn được giữ nguyên.')) {
+        disconnectCloudSync();
+      }
+    });
+
+    // Sync now manual button
+    document.getElementById('btn-sync-now')?.addEventListener('click', () => {
+      fetchFundsFromCloud(false);
+    });
+
+    // Copy share link button
+    document.getElementById('btn-copy-sync-link')?.addEventListener('click', () => {
+      const linkInput = document.getElementById('sync-share-link');
+      if (linkInput && linkInput.value) {
+        navigator.clipboard.writeText(linkInput.value).then(() => {
+          showToast('Đã copy link đồng bộ vào clipboard!', 'success');
+        }).catch(() => {
+          linkInput.select();
+          document.execCommand('copy');
+          showToast('Đã copy link đồng bộ!', 'success');
+        });
+      }
+    });
 
     // Fund Options Dropdown Menu
     const fundMenuBtn = document.getElementById('btn-fund-menu');
@@ -1145,21 +1411,14 @@
       }
     });
 
-    // Load sample data button
-    document.getElementById('btn-load-sample-data')?.addEventListener('click', () => {
-      if (confirm('Bạn có muốn đặt lại dữ liệu mẫu? Dữ liệu hiện tại sẽ được thay thế bằng các quỹ mẫu sinh động.')) {
-        funds = createSampleData();
-        activeFundId = funds[0].id;
-        saveFundsToStorage();
-        renderApp();
-        showToast('Đã nạp thành công dữ liệu mẫu!', 'success');
-      }
-    });
+    // Clear all funds button
+    document.getElementById('btn-clear-all-funds')?.addEventListener('click', clearAllFunds);
 
     // Keyboard shortcuts: Escape closes modal
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeFundModal();
+        closeSyncModal();
       }
     });
   }
@@ -1169,6 +1428,7 @@
     loadFundsFromStorage();
     initEvents();
     renderApp();
+    initCloudSync();
   }
 
   // Run on DOM ready
