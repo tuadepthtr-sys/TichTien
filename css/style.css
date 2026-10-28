@@ -905,6 +905,7 @@ body.theme-light .progress-ring-bg {
 }
 
 input[type="text"],
+input[type="url"],
 input[type="date"],
 select,
 textarea {
@@ -921,6 +922,7 @@ textarea {
 }
 
 input[type="text"]:focus,
+input[type="url"]:focus,
 input[type="date"]:focus,
 select:focus,
 textarea:focus {
@@ -1564,6 +1566,31 @@ textarea:focus {
 .sync-status-banner.connected {
   border-color: rgba(16, 185, 129, 0.35);
   background: rgba(16, 185, 129, 0.08);
+}
+
+.sync-banner-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sync-room-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px dashed rgba(6, 182, 212, 0.4);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  line-height: 1.45;
+}
+
+.sync-room-notice i {
+  margin-top: 2px;
+  font-size: 1rem;
 }
 
 .status-indicator-box {

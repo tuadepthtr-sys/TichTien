@@ -960,12 +960,28 @@
   }
 
   // --- CLOUD SYNC ENGINE (FIREBASE REALTIME DB / SSE REALTIME STREAM) ---
+  const DEFAULT_USER_FIREBASE_URL = 'https://kaibanhbao-dab63-default-rtdb.asia-southeast1.firebasedatabase.app';
+
   function normalizeFirebaseUrl(url) {
     if (!url) return '';
     let clean = url.trim();
+
+    // If user pasted Firebase Console URL from browser address bar
+    const consoleMatch = clean.match(/project\/([a-zA-Z0-9_-]+)/);
+    if (consoleMatch && consoleMatch[1]) {
+      return `https://${consoleMatch[1]}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+    }
+
+    // If user just typed project name (e.g. kaibanhbao-dab63)
+    if (!clean.includes('.') && !clean.includes('/')) {
+      return `https://${clean}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+    }
+
     if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
       clean = 'https://' + clean;
     }
+    // Remove .json and trailing slashes
+    clean = clean.replace(/\.json\/?$/, '');
     return clean.replace(/\/+$/, '');
   }
 
@@ -979,8 +995,8 @@
     const pulseDot = document.getElementById('sync-pulse-dot');
     const statusTitle = document.getElementById('sync-status-title');
     const statusDesc = document.getElementById('sync-status-desc');
-    const disconnectBtn = document.getElementById('btn-disconnect-sync');
-    const syncNowBtn = document.getElementById('btn-sync-now');
+    const bannerActions = document.getElementById('sync-banner-actions');
+    const roomNotice = document.getElementById('sync-room-notice');
     const banner = document.getElementById('sync-status-banner');
     const shareArea = document.getElementById('sync-connected-share');
     const qrImg = document.getElementById('sync-qr-image');
@@ -999,8 +1015,11 @@
       if (btnLabel) btnLabel.textContent = `Đang Đồng Bộ (${syncConfig.pin})`;
       if (statusTitle) statusTitle.textContent = `🟢 Đang kết nối phòng: ${syncConfig.pin}`;
       if (statusDesc) statusDesc.textContent = message || 'Dữ liệu được cập nhật 2 chiều tự động thời gian thực.';
-      if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
-      if (syncNowBtn) syncNowBtn.style.display = 'inline-flex';
+      if (bannerActions) bannerActions.style.display = 'flex';
+      if (roomNotice) {
+        roomNotice.style.display = 'flex';
+        roomNotice.innerHTML = `<i class="fa-solid fa-circle-info"></i><span><strong>Để xem quỹ trên điện thoại:</strong> Mở web trên điện thoại, nhập đúng Mã PIN <code style="background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;color:var(--accent-gold);font-weight:700;">${syncConfig.pin}</code> và bấm <strong>Kết Nối</strong>.</span>`;
+      }
       if (shareArea) shareArea.style.display = 'block';
 
       // Generate share link & QR code
@@ -1014,17 +1033,19 @@
       if (btnLabel) btnLabel.textContent = 'Đang đồng bộ...';
       if (statusTitle) statusTitle.textContent = '⚡ Đang truyền dữ liệu...';
       if (statusDesc) statusDesc.textContent = message || 'Đang kết nối và đồng bộ với Cloud.';
+      if (bannerActions) bannerActions.style.display = 'none';
+      if (roomNotice) roomNotice.style.display = 'none';
     } else {
       if (btnLabel) btnLabel.textContent = 'Đồng Bộ Cloud';
       if (statusTitle) statusTitle.textContent = '⚪ Chưa kết nối Cloud';
       if (statusDesc) statusDesc.textContent = message || 'Dữ liệu hiện chỉ lưu trên trình duyệt máy này.';
-      if (disconnectBtn) disconnectBtn.style.display = 'none';
-      if (syncNowBtn) syncNowBtn.style.display = 'none';
+      if (bannerActions) bannerActions.style.display = 'none';
+      if (roomNotice) roomNotice.style.display = 'none';
       if (shareArea) shareArea.style.display = 'none';
     }
   }
 
-  async function pushFundsToCloud() {
+  async function pushFundsToCloud(showNotification = false) {
     if (!syncConfig.enabled || !syncConfig.dbUrl || !syncConfig.pin) return;
 
     try {
@@ -1049,14 +1070,20 @@
       syncConfig.lastSyncTime = lastLocalPushTimestamp;
       localStorage.setItem(STORAGE_KEY_SYNC_CONFIG, JSON.stringify(syncConfig));
       updateSyncStatusUI('connected', `Đã đồng bộ lúc ${new Date().toLocaleTimeString('vi-VN')}`);
+      if (showNotification) {
+        showToast(`Đã tải thành công ${funds.length} quỹ lên Cloud!`, 'success', 'fa-solid fa-cloud-arrow-up');
+      }
     } catch (err) {
       console.warn('Cloud push error:', err);
       updateSyncStatusUI('offline', 'Không thể kết nối Cloud (kiểm tra lại URL hoặc mạng)');
+      if (showNotification) {
+        showToast('Lỗi khi tải dữ liệu lên Cloud!', 'error');
+      }
     }
   }
 
   async function fetchFundsFromCloud(silent = false) {
-    if (!syncConfig.enabled || !syncConfig.dbUrl || !syncConfig.pin) return;
+    if (!syncConfig.enabled || !syncConfig.dbUrl || !syncConfig.pin) return false;
 
     try {
       updateSyncStatusUI('syncing', 'Đang kéo dữ liệu từ Cloud...');
@@ -1069,27 +1096,27 @@
 
       const remoteData = await response.json();
 
-      if (remoteData && Array.isArray(remoteData.funds)) {
-        // If cloud data exists and is valid
-        if (!remoteData.updatedAt || remoteData.updatedAt >= (syncConfig.lastSyncTime || 0)) {
-          funds = remoteData.funds;
-          activeFundId = remoteData.activeFundId || (funds[0] ? funds[0].id : null);
-          syncConfig.lastSyncTime = remoteData.updatedAt || Date.now();
-          saveFundsToStorage(true); // Don't re-push to cloud
-          renderApp();
-          if (!silent) {
-            showToast(`Đã đồng bộ ${funds.length} quỹ từ Cloud!`, 'success', 'fa-solid fa-cloud-arrow-down');
-          }
+      if (remoteData && Array.isArray(remoteData.funds) && remoteData.funds.length > 0) {
+        // Cloud has funds! Load to local
+        funds = remoteData.funds;
+        activeFundId = remoteData.activeFundId || (funds[0] ? funds[0].id : null);
+        syncConfig.lastSyncTime = remoteData.updatedAt || Date.now();
+        saveFundsToStorage(true); // Don't re-push to cloud
+        renderApp();
+        if (!silent) {
+          showToast(`Đã đồng bộ ${funds.length} quỹ từ Cloud!`, 'success', 'fa-solid fa-cloud-arrow-down');
         }
-      } else if (!remoteData && funds.length > 0) {
-        // Cloud room is empty, push local funds up
+      } else if (funds.length > 0) {
+        // Cloud room has no funds yet, but local device has funds: push local funds to Cloud!
         await pushFundsToCloud();
       }
 
       updateSyncStatusUI('connected', `Đã đồng bộ lúc ${new Date().toLocaleTimeString('vi-VN')}`);
+      return true;
     } catch (err) {
       console.warn('Cloud fetch error:', err);
       updateSyncStatusUI('offline', 'Không thể tải từ Cloud (kiểm tra lại URL hoặc mạng)');
+      return false;
     }
   }
 
@@ -1136,8 +1163,8 @@
   }
 
   async function connectCloudSync(rawUrl, pin) {
-    const cleanUrl = normalizeFirebaseUrl(rawUrl);
-    const cleanPin = pin.trim();
+    let cleanUrl = normalizeFirebaseUrl(rawUrl);
+    const cleanPin = pin ? pin.trim() : '';
 
     if (!cleanUrl) {
       showToast('Vui lòng nhập đường dẫn Firebase Database!', 'error');
@@ -1148,17 +1175,58 @@
       return false;
     }
 
+    updateSyncStatusUI('syncing', 'Đang kiểm tra kết nối tới Firebase...');
+
+    // Smart Region Auto-Detection (US vs Singapore asia-southeast1)
+    let reachableUrl = cleanUrl;
+    let isConnected = false;
+
+    try {
+      let resp = await fetch(`${cleanUrl}/.json?shallow=true`);
+      if (resp.ok) {
+        isConnected = true;
+      } else if (cleanUrl.includes('.firebaseio.com')) {
+        // Auto fallback to Singapore region
+        const sgUrl = cleanUrl.replace('.firebaseio.com', '.asia-southeast1.firebasedatabase.app');
+        const sgResp = await fetch(`${sgUrl}/.json?shallow=true`);
+        if (sgResp.ok) {
+          reachableUrl = sgUrl;
+          isConnected = true;
+        }
+      } else if (cleanUrl.includes('.asia-southeast1.firebasedatabase.app')) {
+        // Auto fallback to US region
+        const usUrl = cleanUrl.replace('.asia-southeast1.firebasedatabase.app', '.firebaseio.com');
+        const usResp = await fetch(`${usUrl}/.json?shallow=true`);
+        if (usResp.ok) {
+          reachableUrl = usUrl;
+          isConnected = true;
+        }
+      }
+    } catch (err) {
+      console.warn('Initial connection check error:', err);
+    }
+
+    if (!isConnected) {
+      showToast('Không thể kết nối tới Firebase! Vui lòng kiểm tra lại đường dẫn Database.', 'error');
+      updateSyncStatusUI('offline', 'Kết nối thất bại. Vui lòng kiểm tra lại URL Database.');
+      return false;
+    }
+
     syncConfig = {
       enabled: true,
-      dbUrl: cleanUrl,
+      dbUrl: reachableUrl,
       pin: cleanPin,
       lastSyncTime: 0
     };
 
-    localStorage.setItem(STORAGE_KEY_SYNC_CONFIG, JSON.stringify(syncConfig));
-    updateSyncStatusUI('syncing', 'Đang thiết lập kết nối...');
+    // Update input with the resolved valid URL
+    const urlInput = document.getElementById('sync-db-url');
+    if (urlInput) urlInput.value = reachableUrl;
 
-    // Test connection & pull/push initial data
+    localStorage.setItem(STORAGE_KEY_SYNC_CONFIG, JSON.stringify(syncConfig));
+    updateSyncStatusUI('syncing', 'Đang đồng bộ dữ liệu...');
+
+    // Initial sync
     await fetchFundsFromCloud(false);
     startRealtimeStream();
     playCoinSound();
@@ -1196,6 +1264,7 @@
       updateSyncStatusUI('connected');
     } else {
       if (pinInput && !pinInput.value) pinInput.value = generateSyncPin();
+      if (urlInput && !urlInput.value) urlInput.value = DEFAULT_USER_FIREBASE_URL;
       updateSyncStatusUI('offline');
     }
 
@@ -1345,9 +1414,27 @@
       }
     });
 
-    // Sync now manual button
+    // Sync now manual button (pull from cloud)
     document.getElementById('btn-sync-now')?.addEventListener('click', () => {
       fetchFundsFromCloud(false);
+    });
+
+    // Force push button (push local funds to cloud)
+    document.getElementById('btn-force-push')?.addEventListener('click', () => {
+      pushFundsToCloud(true);
+    });
+
+    // Auto sync when returning to tab / waking phone
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && syncConfig && syncConfig.enabled) {
+        fetchFundsFromCloud(true);
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      if (syncConfig && syncConfig.enabled) {
+        fetchFundsFromCloud(true);
+      }
     });
 
     // Copy share link button

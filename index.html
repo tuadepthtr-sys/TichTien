@@ -522,9 +522,22 @@
               <p id="sync-status-desc">Dữ liệu hiện chỉ lưu trên trình duyệt máy này.</p>
             </div>
           </div>
-          <button type="button" class="btn btn-secondary sm" id="btn-disconnect-sync" style="display: none;">
-            <i class="fa-solid fa-link-slash"></i> Ngắt kết nối
-          </button>
+          <div class="sync-banner-actions" id="sync-banner-actions" style="display: none;">
+            <button type="button" class="btn btn-secondary sm" id="btn-sync-now" title="Tải dữ liệu mới nhất từ Cloud về thiết bị này">
+              <i class="fa-solid fa-cloud-arrow-down"></i> Tải Từ Cloud Về
+            </button>
+            <button type="button" class="btn btn-primary sm" id="btn-force-push" title="Đẩy toàn bộ quỹ hiện có trên máy này lên Cloud">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Tải Quỹ Lên Cloud
+            </button>
+            <button type="button" class="btn btn-secondary sm" id="btn-disconnect-sync" title="Ngắt kết nối Cloud">
+              <i class="fa-solid fa-link-slash"></i> Ngắt kết nối
+            </button>
+          </div>
+        </div>
+
+        <div class="sync-room-notice" id="sync-room-notice" style="display: none;">
+          <i class="fa-solid fa-circle-info"></i>
+          <span><strong>Để xem quỹ trên điện thoại:</strong> Mở web trên điện thoại, nhập đúng <strong>Mã PIN</strong> giống PC và dán link Firebase rồi bấm <strong>Kết Nối</strong>.</span>
         </div>
 
         <!-- Sync Configuration Form -->
@@ -559,10 +572,10 @@
             <input 
               type="url" 
               id="sync-db-url" 
-              placeholder="https://du-an-cua-ban-default-rtdb.firebaseio.com" 
+              placeholder="https://kaibanhbao-dab63-default-rtdb.asia-southeast1.firebasedatabase.app" 
               required
             >
-            <span class="form-hint">Dùng Realtime Database của Google Firebase (Miễn phí 100% vĩnh viễn, cập nhật thời gian thực).</span>
+            <span class="form-hint">Dùng Realtime Database của Google Firebase (Miễn phí 100%, tự động đồng bộ thời gian thực).</span>
           </div>
 
           <!-- Quick Instruction Dropdown -->
@@ -600,9 +613,6 @@
 
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" id="btn-cancel-sync">Đóng</button>
-            <button type="button" class="btn btn-secondary" id="btn-sync-now" style="display: none;">
-              <i class="fa-solid fa-arrows-rotate"></i> Đồng bộ ngay
-            </button>
             <button type="submit" class="btn btn-primary btn-glow" id="btn-save-sync">
               <i class="fa-solid fa-link"></i> Kết Nối &amp; Bắt Đầu Đồng Bộ
             </button>
@@ -616,6 +626,6 @@
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
   <!-- Scripts -->
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=2.2"></script>
 </body>
 </html>
